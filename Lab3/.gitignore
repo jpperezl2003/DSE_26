@@ -1,0 +1,11 @@
+# Terraform working directory
+.terraform/
+
+# Terraform state
+*.tfstate
+*.tfstate.*
+
+# Private keys
+*.pem
+*.tfplan
+crash.log
