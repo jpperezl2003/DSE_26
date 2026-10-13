@@ -1,0 +1,4 @@
+allowed_cidr = "0.0.0.0/0" # HTTP al ALB desde cualquier IPv4
+lambda_role_name = "LabRole"
+reserved_concurrency = -1
+cache_ttl = 300

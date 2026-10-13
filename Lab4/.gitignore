@@ -1,0 +1,11 @@
+.terraform/
+*.tfstate*
+*.tfplan
+terraform.tfvars
+*.auto.tfvars
+crash.log
+build/
+__pycache__/
+results/
+seed-result.json
+clear-result.json
