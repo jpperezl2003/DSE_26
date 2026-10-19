@@ -1,0 +1,96 @@
+#!/bin/bash
+set -euo pipefail
+
+retry() {
+  local attempt=0
+  until "$@"; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge 5 ]; then return 1; fi
+    sleep 10
+  done
+}
+
+cat > /etc/yum.repos.d/grafana.repo <<'REPO'
+[grafana]
+name=grafana
+baseurl=https://rpm.grafana.com
+repo_gpgcheck=1
+enabled=1
+gpgcheck=1
+gpgkey=https://rpm.grafana.com/gpg.key
+sslverify=1
+REPO
+retry curl -fsS https://packages.clickhouse.com/rpm/clickhouse.repo -o /etc/yum.repos.d/clickhouse.repo
+export DEBIAN_FRONTEND=noninteractive
+retry dnf install -y grafana openssl clickhouse-server clickhouse-client
+systemctl stop clickhouse-server || true
+install -d -m 755 /etc/clickhouse-server/config.d /etc/clickhouse-server/users.d
+cat > /etc/clickhouse-server/config.d/lab5.xml <<'CHCONFIG'
+<clickhouse>
+  <listen_host replace="replace">0.0.0.0</listen_host>
+  <max_server_memory_usage>2147483648</max_server_memory_usage>
+</clickhouse>
+CHCONFIG
+cat > /etc/clickhouse-server/users.d/lab5.xml <<'CHUSERS'
+<clickhouse>
+  <users>
+    <default replace="replace">
+      <password></password>
+      <networks><ip>127.0.0.1</ip><ip>::1</ip></networks>
+      <profile>default</profile><quota>default</quota><access_management>1</access_management>
+    </default>
+  </users>
+</clickhouse>
+CHUSERS
+# Avoid a package-generated password override for the local bootstrap user.
+if [ -f /etc/clickhouse-server/users.d/default-password.xml ]; then
+  mv /etc/clickhouse-server/users.d/default-password.xml /root/clickhouse-default-password.xml.bak
+fi
+printf '%s' '${schema_b64}' | base64 -d > /root/lab5-schema.sql
+systemctl enable --now clickhouse-server
+retry clickhouse-client --host 127.0.0.1 --query 'SELECT 1'
+clickhouse-client --host 127.0.0.1 --multiquery < /root/lab5-schema.sql
+systemctl stop grafana-server || true
+install -d -m 755 /etc/grafana/provisioning/datasources /etc/grafana/provisioning/dashboards
+install -d -o grafana -g grafana -m 755 /var/lib/grafana/dashboards /var/lib/grafana/plugins
+printf '%s' '${datasource_b64}' | base64 -d > /etc/grafana/provisioning/datasources/clickhouse.yaml
+printf '%s' '${provider_b64}' | base64 -d > /etc/grafana/provisioning/dashboards/lab5.yaml
+printf '%s' '${dashboard_b64}' | base64 -d > /var/lib/grafana/dashboards/inventory.json
+chown grafana:grafana /var/lib/grafana/dashboards/inventory.json
+
+if [ ! -s /etc/grafana/admin-password ]; then
+  umask 077
+  openssl rand -hex 24 > /etc/grafana/admin-password
+fi
+chown root:grafana /etc/grafana/admin-password
+chmod 640 /etc/grafana/admin-password
+cat > /etc/grafana/grafana.ini <<'CONFIG'
+[server]
+http_addr = 0.0.0.0
+http_port = 3000
+[security]
+admin_user = admin
+admin_password = $__file{/etc/grafana/admin-password}
+[users]
+allow_sign_up = false
+[auth.anonymous]
+enabled = false
+[dashboards]
+default_home_dashboard_path = /var/lib/grafana/dashboards/inventory.json
+CONFIG
+chown root:grafana /etc/grafana/grafana.ini
+chmod 640 /etc/grafana/grafana.ini
+retry /usr/share/grafana/bin/grafana cli --homepath /usr/share/grafana --pluginsDir /var/lib/grafana/plugins plugins install grafana-clickhouse-datasource
+chown -R grafana:grafana /var/lib/grafana/plugins
+systemctl enable --now amazon-ssm-agent
+systemctl enable --now grafana-server
+for attempt in $(seq 1 60); do
+  if curl -fsS http://localhost:3000/api/health > /dev/null; then
+    touch /var/lib/grafana/lab5-ready
+    exit 0
+  fi
+  sleep 5
+done
+journalctl -u grafana-server -n 50 --no-pager
+exit 1
+

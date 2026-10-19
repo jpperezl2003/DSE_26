@@ -1,0 +1,8 @@
+aws_region = "us-east-1"
+project_name = "lab5-inventario"
+minimum_stock = 3
+grafana_instance_type = "t3.medium"
+# Reemplaza por tu IPv4 publica real, seguida de /32.
+grafana_allowed_cidr = "203.0.113.10/32"
+lab_role_name = "LabRole"
+lab_instance_profile_name = "LabInstanceProfile"

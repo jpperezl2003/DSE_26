@@ -1,0 +1,9 @@
+output "stream_name" { value = aws_kinesis_stream.inventory.name }
+output "lambda_name" { value = aws_lambda_function.processor.function_name }
+output "aws_region" { value = var.aws_region }
+output "minimum_stock" { value = var.minimum_stock }
+output "grafana_instance_id" { value = aws_instance.grafana.id }
+output "grafana_public_ip" { value = aws_eip.grafana.public_ip }
+output "grafana_url" { value = "http://${aws_eip.grafana.public_ip}:3000" }
+output "grafana_dashboard_url" { value = "http://${aws_eip.grafana.public_ip}:3000/d/lab5-inventory" }
+output "clickhouse_private_url" { value = "http://${aws_instance.grafana.private_ip}:8123" }

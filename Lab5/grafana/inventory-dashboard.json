@@ -1,0 +1,551 @@
+{
+  "id": null,
+  "uid": "lab5-inventory",
+  "title": "Lab5 | Inventario RFID en tiempo real",
+  "tags": [
+    "lab5",
+    "inventory",
+    "clickhouse"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "utc",
+  "editable": true,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "minimum_stock",
+        "label": "Stock minimo",
+        "type": "constant",
+        "query": "3",
+        "hide": 0,
+        "current": {
+          "text": "3",
+          "value": "3"
+        },
+        "options": [
+          {
+            "text": "3",
+            "value": "3",
+            "selected": true
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Unidades en almacen (estado actual)",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-inventory"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-inventory"
+          },
+          "format": 1,
+          "rawSql": "SELECT sum(stock) AS units FROM inventory.inventory_stock",
+          "queryType": "table",
+          "editorType": "sql",
+          "pluginVersion": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Productos bajo el minimo (estado actual)",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-inventory"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-inventory"
+          },
+          "format": 1,
+          "rawSql": "SELECT COUNT(*) AS low_stock FROM inventory.inventory_stock WHERE stock < ${minimum_stock}",
+          "queryType": "table",
+          "editorType": "sql",
+          "pluginVersion": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Movimientos procesados (periodo)",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-inventory"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-inventory"
+          },
+          "format": 1,
+          "rawSql": "SELECT COUNT(*) AS events FROM inventory.fact_movements WHERE $__timeFilter(occurred_at)",
+          "queryType": "table",
+          "editorType": "sql",
+          "pluginVersion": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Retraso promedio sensor -> ClickHouse (periodo)",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-inventory"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-inventory"
+          },
+          "format": 1,
+          "rawSql": "SELECT AVG(dateDiff('millisecond',occurred_at,ingested_at))/1000.0 AS latency_seconds FROM inventory.fact_movements WHERE $__timeFilter(occurred_at)",
+          "queryType": "table",
+          "editorType": "sql",
+          "pluginVersion": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Existencias por producto (todos los almacenes)",
+      "type": "bargauge",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-inventory"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-inventory"
+          },
+          "format": 1,
+          "rawSql": "SELECT product_id, toFloat64(sum(stock)) AS stock\nFROM inventory.inventory_stock\nGROUP BY product_id\nORDER BY product_id",
+          "queryType": "table",
+          "editorType": "sql",
+          "pluginVersion": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "max": 20
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "vertical",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "values": true,
+          "fields": "/^stock$/",
+          "calcs": []
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Entradas y salidas por minuto",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-inventory"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-inventory"
+          },
+          "format": 0,
+          "rawSql": "SELECT toStartOfMinute(occurred_at) AS time,movement AS metric,COUNT(*) AS value FROM inventory.fact_movements WHERE $__timeFilter(occurred_at) GROUP BY 1,2 ORDER BY 1",
+          "queryType": "timeseries",
+          "editorType": "sql",
+          "pluginVersion": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Inventario actual y stock bajo",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-inventory"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-inventory"
+          },
+          "format": 1,
+          "rawSql": "SELECT warehouse_id,product_id,stock,stock < ${minimum_stock} AS low_stock,updated_at FROM inventory.inventory_stock ORDER BY warehouse_id,product_id",
+          "queryType": "table",
+          "editorType": "sql",
+          "pluginVersion": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 8,
+      "title": "Movimientos diarios (periodo)",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-inventory"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-inventory"
+          },
+          "format": 1,
+          "rawSql": "SELECT\n    toDate(occurred_at) AS day,\n    warehouse_id,\n    product_id,\n    countIf(movement = 'entrada') AS entries,\n    countIf(movement = 'salida') AS exits,\n    sum(quantity_delta) AS net_movement\nFROM inventory.fact_movements\nWHERE $__timeFilter(occurred_at)\nGROUP BY day, warehouse_id, product_id\nORDER BY day DESC, product_id\nLIMIT 100",
+          "queryType": "table",
+          "editorType": "sql",
+          "pluginVersion": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 9,
+      "title": "Ultimas lecturas procesadas (periodo)",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-inventory"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-inventory"
+          },
+          "format": 1,
+          "rawSql": "SELECT occurred_at,warehouse_id,product_id,rfid,movement,event_id FROM inventory.fact_movements WHERE $__timeFilter(occurred_at) ORDER BY occurred_at DESC LIMIT 50",
+          "queryType": "table",
+          "editorType": "sql",
+          "pluginVersion": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    }
+  ],
+  "annotations": {
+    "list": []
+  }
+}
